@@ -40,13 +40,19 @@ module cpu(Clk, Reset_N, readM1, address1, data1, readM2, writeM2, address2, dat
 	//output port for wwd
 	assign output_port = output_reg;
 
+	wire shit = 1;
+
+	wire [`WORD_SIZE-1:0] i_cache_result;
+	wire hit;
+	i_cache INS_CACHE (PC, i_cache_result, shit, Clk, Reset_N, hit, readM1, address1, data1);
+
 	// Set up the data_path and control_unit 
 	data_path DP (
 		Clk, 
 		Reset_N,
 		readM1, 
 		address1, 
-		data1, 
+		i_cache_result, 
 		readM2, 
 		writeM2, 
 		address2, 
@@ -57,12 +63,11 @@ module cpu(Clk, Reset_N, readM1, address1, data1, readM2, writeM2, address2, dat
 		nextPC,
 		signal,
 		is_halted,
-		num_inst
+		num_inst,
+		hit
 	);
 
 	control_unit CON (instruction, signal);
-
-
 
 
 	initial begin
