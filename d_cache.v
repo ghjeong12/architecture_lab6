@@ -72,7 +72,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 	//wire outside_hit;
 	assign outside_hit = (hit==1 && miss_cnt==0) ? 1 :0 ;
 	
-	assign address2 = (miss_cnt) ? ((evicted && miss_cnt==1)?prev_addr :DP_address2 - (DP_address2 % 4)) : 0;
+	assign address2 = (miss_cnt) ? ((evicted && miss_cnt==2)?prev_addr :DP_address2 - (DP_address2 % 4)) : 0;
 	assign writeM2 = (miss_cnt==1) ? ((evicted==1) ? 1 : 0) : 0;	// To be implemented
 	assign readM2 = (miss_cnt==2) ? 1 : 0;
 	
@@ -109,18 +109,20 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						end
 						else if(miss_cnt == 1) begin 
 							if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) begin // if this line is dirty, write back!
-								prev_addr_tag = tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
-								prev_addr_idx = addr_idx;
-								prev_addr = {prev_addr_tag,prev_addr_idx,2'b00};
-								set = 0;
-								evicted = 1;
+								//prev_addr_tag <= tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
+								//prev_addr_idx <= addr_idx;
+								prev_addr <= {tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13],addr_idx,2'b00};
+								set <= 0;
+								evicted <= 1;
 							end 
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-17:`I_CACHE_ENTRY_SIZE-32] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+1;
 						end
 						else if(miss_cnt == 2) begin 
-							evicted = 0;
+							evicted <= 0;
+							prev_addr_tag <= tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
+							prev_addr_idx <= addr_idx;
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-33:`I_CACHE_ENTRY_SIZE-48] <= data1;
 							//readM1 = 1;
 							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-1 : `D_CACHE_ENTRY_SIZE-64] <= data2;
@@ -136,7 +138,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 								if(addr_bo==2) begin
 									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-33:`D_CACHE_ENTRY_SIZE-48] <= DP_data2;
 								end
-								if(addr_bo==2) begin
+								if(addr_bo==3) begin
 									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-49:`D_CACHE_ENTRY_SIZE-64] <= DP_data2;
 								end
 							end
@@ -176,16 +178,16 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						end
 						else if(miss_cnt == 1) begin 
 							if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) begin // if this line is dirty, write back!
-								prev_addr_tag = tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
-								prev_addr_idx = addr_idx;
-								prev_addr = {prev_addr_tag,prev_addr_idx,2'b00};
-								set = 1;
-								evicted = 1;
-
+								
+								prev_addr <= {tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13],addr_idx,2'b00};
+								set <= 1;
+								evicted <= 1;
 							end 
 						end
 						else if(miss_cnt == 2) begin 
-							evicted = 0;
+							prev_addr_tag <= tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
+								prev_addr_idx <= addr_idx;
+							evicted <= 0;
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-97:`I_CACHE_ENTRY_SIZE-2] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+2;
@@ -203,7 +205,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 								if(addr_bo==2) begin
 									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-97:`D_CACHE_ENTRY_SIZE-112] <= DP_data2;
 								end
-								if(addr_bo==2) begin
+								if(addr_bo==3) begin
 									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-113:`D_CACHE_ENTRY_SIZE-128] <= DP_data2;
 								end
 							end
@@ -248,7 +250,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						if(addr_bo==2) begin
 							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-33:`D_CACHE_ENTRY_SIZE-48] <= DP_data2;
 						end
-						if(addr_bo==2) begin
+						if(addr_bo==3) begin
 							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-49:`D_CACHE_ENTRY_SIZE-64] <= DP_data2;
 						end
 					end
@@ -262,7 +264,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						if(addr_bo==2) begin
 							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-97:`D_CACHE_ENTRY_SIZE-112] <= DP_data2;
 						end
-						if(addr_bo==2) begin
+						if(addr_bo==3) begin
 							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-113:`D_CACHE_ENTRY_SIZE-128] <= DP_data2;
 						end
 					end
