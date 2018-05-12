@@ -72,14 +72,14 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 	//wire outside_hit;
 	assign outside_hit = (hit==1 && miss_cnt==0) ? 1 :0 ;
 	
-	assign address2 = (miss_cnt) ? ((evicted && miss_cnt==2)?prev_addr :DP_address2 - (DP_address2 % 4)) : 0;
-	assign writeM2 = (miss_cnt==1) ? ((evicted==1) ? 1 : 0) : 0;	// To be implemented
+	assign address2 = (miss_cnt) ? ((tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1 && miss_cnt==1)?{tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13],addr_idx,2'b00} :DP_address2 - (DP_address2 % 4)) : 0;
+	assign writeM2 = (miss_cnt==1) ? ((tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) ? 1 : 0) : 0;	// To be implemented
 	assign readM2 = (miss_cnt==2) ? 1 : 0;
 	
 	assign data2 = DP_writeM2 ? 
-		((miss_cnt==1 && evicted) 
-			? ( (set==0)?data_bank[prev_addr_idx][`D_CACHE_ENTRY_SIZE-1 : `D_CACHE_ENTRY_SIZE-64] 
-			:data_bank[prev_addr_idx][`D_CACHE_ENTRY_SIZE-65 : `D_CACHE_ENTRY_SIZE-128]) : `LINE_SIZE'bz) 
+		((miss_cnt==1 && (tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1)) 
+			? ( (tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-16] == 0)?data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-1 : `D_CACHE_ENTRY_SIZE-64] 
+			:data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-65 : `D_CACHE_ENTRY_SIZE-128]) : `LINE_SIZE'bz) 
 		: `LINE_SIZE'bz;
 
 	
