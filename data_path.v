@@ -25,7 +25,8 @@ module data_path (
 	signal,
 	is_halted,
 	num_inst,
-	hit
+	hit,
+	d_hit
 );
 
 	/* Input / Output Declaration */
@@ -46,6 +47,7 @@ module data_path (
 	output is_halted;
 	output [`WORD_SIZE-1:0] num_inst;
 	input hit;
+	input d_hit;
 
 
 	//always read instruction
@@ -182,7 +184,7 @@ module data_path (
 
 	//cache stall
 	wire IF_mem_stall = !hit;
-	reg MEM_mem_stall = 0;
+	wire MEM_mem_stall = !d_hit;
 	wire MEM_access = ID_EX_signal[6] || ID_EX_signal[8];
 	wire stall = hazard_stall || IF_mem_stall || MEM_mem_stall;
 	//cache IF
@@ -211,9 +213,11 @@ module data_path (
 		num_inst_counter <= 0;
 		IF_ID_ins <= `NOP;
 		ID_EX_ins <= `NOP;
+		EX_MEM_ins <= `NOP;
 		ID_EX_signal <= `SIG_SIZE'b0;
+		EX_MEM_sig <= `SIG_SIZE'b0;
 		//IF_mem_stall <= 1;
-		MEM_mem_stall <= 0;
+		//MEM_mem_stall <= 0;
 	end
 
 
@@ -227,7 +231,7 @@ module data_path (
 			ID_EX_ins <= `NOP;
 			ID_EX_signal <= `SIG_SIZE'b0;
 			//IF_mem_stall <= 1;
-			MEM_mem_stall <= 0;
+			//MEM_mem_stall <= 0;
 		end
 		else begin
 			if(!MEM_mem_stall) begin
