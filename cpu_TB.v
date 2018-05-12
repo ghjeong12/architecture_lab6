@@ -4,6 +4,7 @@
 
 `define NUM_TEST 56
 `define TESTID_SIZE 5
+`include "opcodes.v"
 
 module cpu_TB();
 	reg reset_n;    // active-low RESET signal
@@ -11,7 +12,7 @@ module cpu_TB();
 	
 	wire readM1;
 	wire [`WORD_SIZE-1:0] address1;
-	wire [`WORD_SIZE-1:0] data1;
+	wire [`LINE_SIZE-1:0] data1;
 	wire readM2;
 	wire writeM2;
 	wire [`WORD_SIZE-1:0] address2;

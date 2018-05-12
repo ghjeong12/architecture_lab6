@@ -18,8 +18,8 @@ module i_cache(IF_PC, i_cache_result, write, clk, reset_n, outside_hit, readM1, 
 
 	output readM1;
 	output [`WORD_SIZE-1:0] address1;
-	input [`WORD_SIZE-1:0] data1;
-	wire [`WORD_SIZE-1:0] data1;
+	input [`LINE_SIZE-1:0] data1;
+	//wire [`WORD_SIZE-1:0] data1;
 	
 	assign readM1 = 1;
 	//assign address1 = PC;
@@ -60,11 +60,14 @@ module i_cache(IF_PC, i_cache_result, write, clk, reset_n, outside_hit, readM1, 
 	//wire outside_hit;
 	assign outside_hit = (hit==1 && miss_cnt==0) ? 1 :0 ;
 	
+	/*
 	assign address1 = (miss_cnt == 0) ? IF_PC - (IF_PC%4) :
 							(miss_cnt == 1) ? IF_PC - (IF_PC%4) +1 :
 							(miss_cnt == 2) ? IF_PC - (IF_PC%4) +2 :
 							(miss_cnt == 3) ? IF_PC - (IF_PC%4) +3 :
 							0;
+	*/
+	assign address1 = (miss_cnt) ? IF_PC - (IF_PC % 4) : 0;
 	//For instruction,
 	//There is now write, and write back!
 	always @ (posedge clk) begin
@@ -87,37 +90,34 @@ module i_cache(IF_PC, i_cache_result, write, clk, reset_n, outside_hit, readM1, 
 						
 						
 						if(miss_cnt == 0) begin 
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-1:`I_CACHE_ENTRY_SIZE-16] <= data1;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-1:`I_CACHE_ENTRY_SIZE-16] <= data1;
 
 							//readM1 = 1;
 							//address1 = IF_PC;
 						end
 						else if(miss_cnt == 1) begin 
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-17:`I_CACHE_ENTRY_SIZE-32] <= data1;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-17:`I_CACHE_ENTRY_SIZE-32] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+1;
 						end
 						else if(miss_cnt == 2) begin 
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-33:`I_CACHE_ENTRY_SIZE-48] <= data1;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-33:`I_CACHE_ENTRY_SIZE-48] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+2;
 						end
-						else if(miss_cnt == 3) begin
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-49:`I_CACHE_ENTRY_SIZE-64] <= data1;
-							//readM1 = 1;
-							//address1 = IF_PC+3;
-						end
-						else if(miss_cnt == 4) begin 
+						else if(miss_cnt == 3) begin 
 							///readM1 = 0;
 							//address1 = 0;
+							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-1 : `I_CACHE_ENTRY_SIZE-64] <= data1;
+
 						end
 						
-						if (miss_cnt==5) begin	//should be checked whether it should be 5 or 6
+						if (miss_cnt==4) begin	//should be checked whether it should be 5 or 6
 							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13] <= IF_PC_tag;
-						tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-14] <= 1;	//valid
-						tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-15] <= 0;	//dirty
-						tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-16] <= 1;	//lru
-						tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-32] <= 0;
+							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-14] <= 1;	//valid
+							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-15] <= 0;	//dirty
+							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-16] <= 1;	//lru
+							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-32] <= 0;
 							miss_cnt <= 0;
 						end
 						else begin
@@ -133,36 +133,32 @@ module i_cache(IF_PC, i_cache_result, write, clk, reset_n, outside_hit, readM1, 
 						
 						
 						if(miss_cnt == 0) begin 
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-65:`I_CACHE_ENTRY_SIZE-80] <= data1;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-65:`I_CACHE_ENTRY_SIZE-80] <= data1;
 
 							//readM1 = 1;
 							//address1 = IF_PC;
 						end
 						else if(miss_cnt == 1) begin 
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-81:`I_CACHE_ENTRY_SIZE-96] <= data1;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-81:`I_CACHE_ENTRY_SIZE-96] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+1;
 						end
 						else if(miss_cnt == 2) begin 
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-97:`I_CACHE_ENTRY_SIZE-112] <= data1;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-97:`I_CACHE_ENTRY_SIZE-112] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+2;
 						end
-						else if(miss_cnt == 3) begin
-							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-113:`I_CACHE_ENTRY_SIZE-128] <= data1;
-							//readM1 = 1;
-							//address1 = IF_PC+3;
-						end
-						else if(miss_cnt == 4) begin 
+						else if(miss_cnt == 3) begin 
+							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-65 : `I_CACHE_ENTRY_SIZE-128] <= data1;
 							//readM1 = 0;
 							//address1 = 0;
 						end
-						if (miss_cnt==5) begin	//should be checked whether it should be 5 or 6
+						if (miss_cnt==4) begin	//should be checked whether it should be 5 or 6
 							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-17:3] <= IF_PC_tag;
-						tag_bank[IF_PC_idx][2] <= 1;	//valid
-						tag_bank[IF_PC_idx][1] <= 0;	//dirty
-						tag_bank[IF_PC_idx][0] <= 1;	//lru
-						tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-16] <= 0;
+							tag_bank[IF_PC_idx][2] <= 1;	//valid
+							tag_bank[IF_PC_idx][1] <= 0;	//dirty
+							tag_bank[IF_PC_idx][0] <= 1;	//lru
+							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-16] <= 0;
 							miss_cnt <= 0;
 						end
 						else begin

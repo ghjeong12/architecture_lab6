@@ -1,3 +1,4 @@
+`include "opcodes.v"
 `timescale 1ns/1ns
 `define PERIOD1 100
 `define MEMORY_SIZE 256	//	size of memory is 2^8 words (reduced size)
@@ -15,7 +16,7 @@ module Memory(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, 
 	input [`WORD_SIZE-1:0] address1;
 	wire [`WORD_SIZE-1:0] address1;
 	output data1;
-	reg [`WORD_SIZE-1:0] data1;
+	reg [`LINE_SIZE-1:0] data1;
 	
 	input readM2;
 	wire readM2;
@@ -28,8 +29,14 @@ module Memory(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, 
 	
 	reg [`WORD_SIZE-1:0] memory [0:`MEMORY_SIZE-1];
 	reg [`WORD_SIZE-1:0] outputData2;
-	
-	assign data2 = readM2?outputData2:`WORD_SIZE'bz;
+
+	wire [`WORD_SIZE-1:0] start_addr1 = address1 - (address1 % 4);
+	wire [`WORD_SIZE-1:0] start_addr2 = address2 - (address2 % 4);
+
+	wire [`LINE_SIZE-1:0] mem_addr1 = {memory[start_addr1], memory[start_addr1 + 1], memory[start_addr1 + 2], memory[start_addr1 + 3]};
+	wire [`LINE_SIZE-1:0] mem_addr2 = {memory[start_addr2], memory[start_addr2 + 1], memory[start_addr2 + 2], memory[start_addr2 + 3]};
+
+	assign data2 = readM2?outputData2:`LINE_SIZE'bz;
 	
 	always@(posedge clk)
 		if(!reset_n)
@@ -236,7 +243,7 @@ module Memory(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, 
 			end
 		else
 			begin
-				if(readM1)data1 <= (writeM2 & address1==address2)?data2:memory[address1];
+				if(readM1)data1 <= (writeM2 & address1==address2)?data2:mem_addr1;
 				if(readM2)outputData2 <= memory[address2];
 				if(writeM2)memory[address2] <= data2;															  
 			end
