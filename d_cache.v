@@ -59,16 +59,30 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 		): 0;	//if miss
 
 	assign d_cache_result = (hit==1 && miss_cnt==0) ? hit_result :0 ;
-	assign DP_data2 = DP_readM2?d_cache_result:`LINE_SIZE'bz;
+	assign DP_data2 = DP_readM2 ? d_cache_result : `LINE_SIZE'bz;
 	//if(writeM2)memory[address2] <= data2;															  
 
+	/* For cache write */
+	reg [12:0] prev_addr_tag;
+	reg [0:0]  prev_addr_idx;
+	reg [15:0] prev_addr;
+	reg [0:0] set;
+	reg evicted;
 
 	//wire outside_hit;
 	assign outside_hit = (hit==1 && miss_cnt==0) ? 1 :0 ;
 	
-	assign address2 = (miss_cnt) ? DP_address2 - (DP_address2 % 4) : 0;
-	assign writeM2 = (miss_cnt==2) ? 0 : 0;	// To be implemented
-	assign readM2 = (miss_cnt==3) ? 1 : 0;
+	assign address2 = (miss_cnt) ? ((evicted && miss_cnt==1)?prev_addr :DP_address2 - (DP_address2 % 4)) : 0;
+	assign writeM2 = (miss_cnt==1) ? ((evicted==1) ? 1 : 0) : 0;	// To be implemented
+	assign readM2 = (miss_cnt==2) ? 1 : 0;
+	
+	assign data2 = DP_writeM2 ? 
+		((miss_cnt==1 && evicted) 
+			? ( (set==0)?data_bank[prev_addr_idx][`D_CACHE_ENTRY_SIZE-1 : `D_CACHE_ENTRY_SIZE-64] 
+			:data_bank[prev_addr_idx][`D_CACHE_ENTRY_SIZE-65 : `D_CACHE_ENTRY_SIZE-128]) : `LINE_SIZE'bz) 
+		: `LINE_SIZE'bz;
+
+	
 	//For instruction,
 	//There is now write, and write back!
 	always @ (posedge clk) begin
@@ -77,6 +91,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 				data_bank[i] = 64'h0000000000000000;
 				tag_bank[i] =  32'h00000000;
 				miss_cnt = 0;
+				evicted=0;
 			end
 		end
 		else begin
@@ -84,32 +99,47 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 				begin	// now update cache
 					// lru bit 0 is old data!
 					if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-16] == 0) begin
-						//evict first one
-						if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) begin // if this line is dirty
-							// write back
-						end 
-						
-						
+						//evict first one						
 						if(miss_cnt == 0) begin 
+							
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-1:`I_CACHE_ENTRY_SIZE-16] <= data1;
 
 							//readM1 = 1;
 							//address1 = IF_PC;
 						end
 						else if(miss_cnt == 1) begin 
+							if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) begin // if this line is dirty, write back!
+								prev_addr_tag = tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
+								prev_addr_idx = addr_idx;
+								prev_addr = {prev_addr_tag,prev_addr_idx,2'b00};
+								set = 0;
+								evicted = 1;
+							end 
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-17:`I_CACHE_ENTRY_SIZE-32] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+1;
 						end
 						else if(miss_cnt == 2) begin 
+							evicted = 0;
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-33:`I_CACHE_ENTRY_SIZE-48] <= data1;
 							//readM1 = 1;
-						end
-						else if(miss_cnt == 3) begin
-							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-49:`I_CACHE_ENTRY_SIZE-64] <= data1;
-							//readM1 = 1;
-							//address1 = IF_PC+3;
 							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-1 : `D_CACHE_ENTRY_SIZE-64] <= data2;
+						end
+						else if(miss_cnt == 3) begin	/* Cache update for write */
+							if(DP_writeM2) begin
+								if(addr_bo==0) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-1:`D_CACHE_ENTRY_SIZE-16] <= DP_data2;
+								end
+								if(addr_bo==1) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-17:`D_CACHE_ENTRY_SIZE-32] <= DP_data2;
+								end
+								if(addr_bo==2) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-33:`D_CACHE_ENTRY_SIZE-48] <= DP_data2;
+								end
+								if(addr_bo==2) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-49:`D_CACHE_ENTRY_SIZE-64] <= DP_data2;
+								end
+							end
 						end
 						/*
 						else if(miss_cnt == 4) begin 
@@ -120,9 +150,17 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						if (miss_cnt==4) begin	//should be checked whether it should be 5 or 6
 							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13] <= addr_tag;
 							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-14] <= 1;	//valid
-							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] <= 0;	//dirty
+							
 							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-16] <= 1;	//lru
 							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-32] <= 0;
+							
+							if(DP_writeM2) begin
+								tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] <= 1;	//dirty
+							end // if(DP_writeM2)
+							else begin
+								tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] <= 0;	//dirty
+							end // else
+
 							miss_cnt <= 0;
 						end
 						else begin
@@ -131,28 +169,44 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 					end
 					else begin
 						//evict second one
-						if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) begin // if this line is dirty
-							// write back
-						end 
 						if(miss_cnt == 0) begin 
 							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-65:`I_CACHE_ENTRY_SIZE-80] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC;
 						end
 						else if(miss_cnt == 1) begin 
-							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-81:`I_CACHE_ENTRY_SIZE-96] <= data1;
-							//readM1 = 1;
-							//address1 = IF_PC+1;
+							if(tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] == 1) begin // if this line is dirty, write back!
+								prev_addr_tag = tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13];
+								prev_addr_idx = addr_idx;
+								prev_addr = {prev_addr_tag,prev_addr_idx,2'b00};
+								set = 1;
+								evicted = 1;
+
+							end 
 						end
 						else if(miss_cnt == 2) begin 
-							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-97:`I_CACHE_ENTRY_SIZE-112] <= data1;
+							evicted = 0;
+							//data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-97:`I_CACHE_ENTRY_SIZE-2] <= data1;
 							//readM1 = 1;
 							//address1 = IF_PC+2;
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-65 : `D_CACHE_ENTRY_SIZE-128] <= data2;
+
 						end
 						else if(miss_cnt == 3) begin
-							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-65 : `D_CACHE_ENTRY_SIZE-128] <= data2;
-							//readM1 = 1;
-							//address1 = IF_PC+3;
+							if(DP_writeM2) begin
+								if(addr_bo==0) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-65:`D_CACHE_ENTRY_SIZE-80] <= DP_data2;
+								end
+								if(addr_bo==1) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-81:`D_CACHE_ENTRY_SIZE-96] <= DP_data2;
+								end
+								if(addr_bo==2) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-97:`D_CACHE_ENTRY_SIZE-112] <= DP_data2;
+								end
+								if(addr_bo==2) begin
+									data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-113:`D_CACHE_ENTRY_SIZE-128] <= DP_data2;
+								end
+							end
 						end
 						/*
 						else if(miss_cnt == 4) begin 
@@ -164,9 +218,16 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						if (miss_cnt==4) begin	//should be checked whether it should be 5 or 6
 							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-17:3] <= addr_tag;
 							tag_bank[addr_idx][2] <= 1;	//valid
-							tag_bank[addr_idx][1] <= 0;	//dirty
 							tag_bank[addr_idx][0] <= 1;	//lru
 							tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-16] <= 0;
+							
+							if(DP_writeM2) begin	/* dirty bit setting */
+								tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] <= 1;
+							end // if(DP_writeM2)
+							else begin
+								tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] <= 0;
+							end // else
+
 							miss_cnt <= 0;
 						end
 						else begin
@@ -174,9 +235,41 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 						end
 					end 
 				end
+			end // if(!hit || (miss_cnt != 0))
+			else if(hit) begin
+				if(DP_writeM2) begin
+					if(hit_1) begin
+						if(addr_bo==0) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-1:`D_CACHE_ENTRY_SIZE-16] <= DP_data2;
+						end
+						if(addr_bo==1) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-17:`D_CACHE_ENTRY_SIZE-32] <= DP_data2;
+						end
+						if(addr_bo==2) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-33:`D_CACHE_ENTRY_SIZE-48] <= DP_data2;
+						end
+						if(addr_bo==2) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-49:`D_CACHE_ENTRY_SIZE-64] <= DP_data2;
+						end
+					end
+					else if(hit_2) begin
+						if(addr_bo==0) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-65:`D_CACHE_ENTRY_SIZE-80] <= DP_data2;
+						end
+						if(addr_bo==1) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-81:`D_CACHE_ENTRY_SIZE-96] <= DP_data2;
+						end
+						if(addr_bo==2) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-97:`D_CACHE_ENTRY_SIZE-112] <= DP_data2;
+						end
+						if(addr_bo==2) begin
+							data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-113:`D_CACHE_ENTRY_SIZE-128] <= DP_data2;
+						end
+					end
+					tag_bank[addr_idx][`TAG_BANK_ENTRY_SIZE-15] <= 1;
+				end
 			end
-
-		end
+		end // else
 	end
 	
 endmodule
