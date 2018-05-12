@@ -68,17 +68,24 @@ module i_cache(IF_PC, i_cache_result, write, clk, reset_n, outside_hit, readM1, 
 							0;
 	*/
 	assign address1 = (miss_cnt) ? IF_PC - (IF_PC % 4) : 0;
+
+	reg [`WORD_SIZE-1:0] i_cache_miss_cnt;
+
 	//For instruction,
 	//There is now write, and write back!
 	always @ (posedge clk) begin
 		if(!reset_n) begin
 			for(i = 0; i < `I_CACHE_SIZE; i = i + 1) begin
-				data_bank[i] = 64'h0000000000000000;
-				tag_bank[i] =  32'h00000000;
-				miss_cnt = 0;
+				data_bank[i] <= 64'h0000000000000000;
+				tag_bank[i] <=  32'h00000000;
+				miss_cnt <= 0;
 			end
+			i_cache_miss_cnt <= 0;
 		end
 		else begin
+			if(miss_cnt==1) begin
+				i_cache_miss_cnt = i_cache_miss_cnt+1;
+			end
 			if(!hit || (miss_cnt != 0)) begin
 				begin	// now update cache
 					// lru bit 0 is old data!

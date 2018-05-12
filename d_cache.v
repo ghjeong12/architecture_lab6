@@ -51,6 +51,7 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 	//wire [7:0] snd_set_bo_start = 63 - { 6'b000000, IF_PC_bo[1:0] }*16;
 	//wire [7:0] snd_set_bo_end =  63 - ({ 6'b000000, IF_PC_bo[1:0] }+1)*16;
 	// bo can be 0 1 2 3 
+	
 	reg [3:0] miss_cnt;
 	//wire [`WORD_SIZE-1:0] miss_result;
 	wire [`WORD_SIZE-1:0] hit_result = hit ? (hit_1 
@@ -82,7 +83,17 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 			:data_bank[addr_idx][`D_CACHE_ENTRY_SIZE-65 : `D_CACHE_ENTRY_SIZE-128]) : `LINE_SIZE'bz) 
 		: `LINE_SIZE'bz;
 
-	
+	reg [`WORD_SIZE-1:0] d_cache_access_cnt;
+	reg [`WORD_SIZE-1:0] d_cache_miss_cnt;
+	always @ (posedge DP_writeM2) begin
+		d_cache_access_cnt = d_cache_access_cnt+1;
+	end // always @ (posedge DP_writeM2)
+	always @ (posedge DP_readM2) begin
+		d_cache_access_cnt = d_cache_access_cnt+1;
+	end // always @ (posedge DP_writeM2)
+	always @ (posedge readM2) begin
+		d_cache_miss_cnt = d_cache_miss_cnt+1;
+	end
 	//For instruction,
 	//There is now write, and write back!
 	always @ (posedge clk) begin
@@ -93,6 +104,8 @@ module d_cache(d_cache_result, clk, reset_n, outside_hit,
 				miss_cnt = 0;
 				evicted=0;
 			end
+			d_cache_access_cnt = 0;
+			d_cache_miss_cnt = 0;
 		end
 		else begin
 			if(!hit || (miss_cnt != 0)) begin
