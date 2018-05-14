@@ -36,14 +36,13 @@ module i_cache(IF_PC, i_cache_result, clk, reset_n, outside_hit, readM1, address
 	wire hit_2 = (IF_PC_tag == tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-17:`TAG_BANK_ENTRY_SIZE-29]) && (tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-30] == 1);
 	wire hit = hit_1 | hit_2;
 
-	reg [3:0] miss_cnt;
-
 	/* hit result should be set by set and block offset */	
 	wire [`WORD_SIZE-1:0] hit_result = hit ? (hit_1 
 		? (IF_PC_bo==0 ? data_bank[IF_PC_idx][127:112] : (IF_PC_bo==1 ? data_bank[IF_PC_idx][111:96]: (IF_PC_bo == 2 ? data_bank[IF_PC_idx][95:80]: data_bank[IF_PC_idx][79:64])))	// First set
 		: (IF_PC_bo==0 ? data_bank[IF_PC_idx][63:48] : (IF_PC_bo==1 ? data_bank[IF_PC_idx][47:32]: (IF_PC_bo == 2 ? data_bank[IF_PC_idx][31:16]: data_bank[IF_PC_idx][15:0])))		// Second set
 		): 0;	//if miss
 
+	reg [3:0] miss_cnt;
 	assign i_cache_result = (hit==1 && miss_cnt==0) ? hit_result :0 ;
 	
 	/* If miss_cnt is not zero, it means cache is handling cache miss */
@@ -77,9 +76,7 @@ module i_cache(IF_PC, i_cache_result, clk, reset_n, outside_hit, readM1, address
 						end 
 						else if(miss_cnt == 3) begin 
 							data_bank[IF_PC_idx][`I_CACHE_ENTRY_SIZE-1 : `I_CACHE_ENTRY_SIZE-64] <= data1;
-
 						end
-						
 						if (miss_cnt==4) begin	//should be checked whether it should be 5 or 6
 							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-1:`TAG_BANK_ENTRY_SIZE-13] <= IF_PC_tag;
 							tag_bank[IF_PC_idx][`TAG_BANK_ENTRY_SIZE-14] <= 1;	//valid
