@@ -40,11 +40,10 @@ module cpu(Clk, Reset_N, readM1, address1, data1, readM2, writeM2, address2, dat
 	//output port for wwd
 	assign output_port = output_reg;
 
-	wire shit = 1;
-
+	/* Declaration for I-cache and D-cache */
 	wire [`WORD_SIZE-1:0] i_cache_result;
 	wire hit;
-	i_cache INS_CACHE (PC, i_cache_result, shit, Clk, Reset_N, hit, readM1, address1, data1);
+	i_cache INS_CACHE (PC, i_cache_result, Clk, Reset_N, hit, readM1, address1, data1);
 	
 	wire [`WORD_SIZE-1:0] d_cache_result;
 	wire d_hit;
@@ -52,8 +51,9 @@ module cpu(Clk, Reset_N, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire DP_writeM2;
 	wire [`WORD_SIZE-1:0] DP_address2;
 	wire [`WORD_SIZE-1:0] DP_data2;
-	d_cache d_cache(d_cache_result, Clk, Reset_N, d_hit, 
+	d_cache DATA_CACHE(d_cache_result, Clk, Reset_N, d_hit, 
 		DP_readM2, DP_writeM2, DP_address2, DP_data2, readM2, writeM2, address2, data2);
+	
 	// Set up the data_path and control_unit 
 	data_path DP (
 		Clk, 
